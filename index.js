@@ -254,6 +254,6 @@ require([
 
     _getDataByUrl();
 
-    window.setInterval(_getDataByUrl, 1000 * 60 * 60);
+    window.setInterval(_getDataByUrl, 1000 * 60 * 5);
 
 });
