@@ -1,0 +1,75 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/bulma.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- <script src="assets/js/Chart.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://js.arcgis.com/4.17/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/danfojs@0.1.2/dist/index.min.js"></script>
+    <title>PNSRDash</title>
+</head>
+
+<body>
+    <!-- <section class="hero is-light is-small">
+        <div class="hero-body">
+            <div class="container">
+                <h1 class="title">
+                    PNSR
+                </h1>
+                <h2 class="subtitle">
+                    Estrategia de cloración
+                </h2>
+            </div>
+        </div>
+    </section> -->
+    <div class="columns" style="height: 100%;">
+        <div class="column is-3" id="container_indicators">
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Encuestas realizadas</p>
+                    <p class="title" id="n_encuestas"></p>
+                </div>
+            </div>
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Padrón Nominal</p>
+                    <p class="title" id="n_padron_nominal"></p>
+                </div>
+            </div>
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Limpieza y desinfección</p>
+                    <p class="title" id="n_limpieza_desinfeccion"></p>
+                </div>
+            </div>
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Georref. de componentes</p>
+                    <p class="title" id="n_geo_componentes"></p>
+                </div>
+            </div>
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Visita domiciliaria</p>
+                    <p class="title" id="n_visita_domiciliaria"></p>
+                </div>
+            </div>
+            <div class="indicator_value level-item has-text-centered">
+                <div>
+                    <p class="heading">Indicadores de cloración</p>
+                    <p class="title" id="n_indicadores_cloracion"></p>
+                </div>
+            </div>
+
+        </div>
+        <div class="column is-9 is-desktop is-vcentered" id="container_charts">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+
+</html>
