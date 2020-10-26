@@ -27,32 +27,51 @@ require([
         'Georref. de componentes'
     ]
 
-    var departamentos = {
-        '8': 'CUSCO',
+    var _departamentos = {
+        '08': 'CUSCO',
         '20': 'PIURA',
         '21': 'PUNO'
     }
 
-    var query = new Query();
-    // var queryTask = new QueryTask({ url: url_padron_nominal })
+    var timeRender = 1000 * 30
 
-    query.where = "cod_eval like 'OTS%' and cod_eval <> 'OTS-PRUEBA'"
+
+
+    // Nombre de campos originales
+    var _cod_eval = 'cod_eval'
+    var _calc_depa = 'calc_depa'
+
+    // Nombre de campos de salidas
+    var _n_encuestas_out = 'n_encuestas'
+    var _cod_depa_out = 'departamento'
+    var _survey = 'survey'
+
+    var _where = `${_cod_eval} like 'OTS%' and ${_cod_eval} <> 'OTS-PRUEBA'`;
+
+    var query = new Query();
+
+    query.where = _where
     query.returnGeometry = false
-    query.groupByFieldsForStatistics = ['cod_eval']
+    query.groupByFieldsForStatistics = [_cod_eval]
 
     query.outStatistics = [{
-        onStatisticField: "cod_eval",
-        outStatisticFieldName: "n_encuestas",
+        onStatisticField: _cod_eval,
+        outStatisticFieldName: _n_encuestas_out,
         statisticType: "count"
     }, {
-        onStatisticField: "calc_depa",
-        outStatisticFieldName: "cod_depa",
+        onStatisticField: _calc_depa,
+        outStatisticFieldName: _cod_depa_out,
         statisticType: "min"
     }];
 
-    var df_surveys = new dfd.DataFrame(surveys, { columns: ['survey'] });
+    var _chartPieSurveys;
+    var _chartBarScoreOTS;
+    var _chartStackBar;
 
-    _getDataByUrl = function() {
+
+    var status = 'initial';
+
+    _renderAllDashboard = function() {
         let containerQueryTask = [];
         for (let i in urls) {
             let queryTask = new QueryTask({ url: urls[i] });
@@ -71,66 +90,73 @@ require([
         })
 
         df = new dfd.DataFrame(dataTotal);
-        // df.print()
+        df[_cod_depa_out] = df[_cod_depa_out].apply((x) => { return _departamentos[x] });
 
-        document.getElementById('n_encuestas').innerHTML = df['n_encuestas'].sum()
-        document.getElementById('n_padron_nominal').innerHTML = df.query({ column: "survey", is: "==", to: surveys[0] })['n_encuestas'].sum()
-        document.getElementById('n_limpieza_desinfeccion').innerHTML = df.query({ column: "survey", is: "==", to: surveys[1] })['n_encuestas'].sum()
-        document.getElementById('n_indicadores_cloracion').innerHTML = df.query({ column: "survey", is: "==", to: surveys[2] })['n_encuestas'].sum()
-        document.getElementById('n_visita_domiciliaria').innerHTML = df.query({ column: "survey", is: "==", to: surveys[3] })['n_encuestas'].sum()
-        document.getElementById('n_geo_componentes').innerHTML = df.query({ column: "survey", is: "==", to: surveys[4] })['n_encuestas'].sum()
+        document.getElementById('n_encuestas').innerHTML = df[_n_encuestas_out].sum()
+        document.getElementById('n_padron_nominal').innerHTML = df.query({ column: _survey, is: "==", to: surveys[0] })[_n_encuestas_out].sum()
+        document.getElementById('n_limpieza_desinfeccion').innerHTML = df.query({ column: _survey, is: "==", to: surveys[1] })[_n_encuestas_out].sum()
+        document.getElementById('n_indicadores_cloracion').innerHTML = df.query({ column: _survey, is: "==", to: surveys[2] })[_n_encuestas_out].sum()
+        document.getElementById('n_visita_domiciliaria').innerHTML = df.query({ column: _survey, is: "==", to: surveys[3] })[_n_encuestas_out].sum()
+        document.getElementById('n_geo_componentes').innerHTML = df.query({ column: _survey, is: "==", to: surveys[4] })[_n_encuestas_out].sum()
 
         // chart pie
-        let df_gb = df.groupby(['cod_depa'])
-        let df_depa = df_gb.agg({ "n_encuestas": "sum" })
-        x_pie = df_depa['cod_depa'].data.map((i) => departamentos[String(i)])
-        y_pie = df_depa['n_encuestas_sum'].data;
-        _getChartPieSurveysByDep(x_pie, y_pie)
+        let df_gb = df.groupby([_cod_depa_out])
+        let df_depa = df_gb.agg({ n_encuestas: "sum" });
+        let x_pie = df_depa[_cod_depa_out].data
+        let y_pie = df_depa[`${_n_encuestas_out}_sum`].data;
+
 
         // chart horizontalbar
-        let df_gb_ots = df.groupby(['cod_eval'])
-        let df_survey_by_ots = df_gb_ots.agg({ "n_encuestas": "sum" })
+        let df_gb_ots = df.groupby([_cod_eval])
+        let df_survey_by_ots = df_gb_ots.agg({ n_encuestas: "sum" })
 
-        df_survey_by_ots.sort_values({ by: "n_encuestas_sum", ascending: false, inplace: true })
-            // df_survey_by_ots.print()
-        x_hbar = df_survey_by_ots['cod_eval'].data.slice(0, 10)
-        y_hbar = df_survey_by_ots['n_encuestas_sum'].data
-        _drawChartBarScoreOTS(x_hbar, y_hbar.slice(0, 10));
+        df_survey_by_ots = df_survey_by_ots.data.sort(function(a, b) { return b[1] - a[1]; })
 
-        document.getElementById('n_ots_encuesta').innerHTML = df_gb_ots.data.length
+        let x_hbar = df_survey_by_ots.slice(0, 10).map((i) => i[0])
+        let y_hbar = df_survey_by_ots.slice(0, 10).map((i) => i[1])
+
+        document.getElementById('n_ots_encuesta').innerHTML = df_survey_by_ots.length
 
         // chart stacked bar
-        let df_stacked_obj = df.groupby(['survey', 'cod_depa'])
-        let df_stacked = df_stacked_obj.agg({ "n_encuestas": "sum" })
+        let df_stacked_obj = df.groupby([_survey, _cod_depa_out])
+        let df_stacked = df_stacked_obj.agg({ n_encuestas: "sum" })
 
-        x = Object.values(departamentos)
-        y = [];
+        x_sbar = df_stacked[_cod_depa_out].unique().data
+        y_sbar = [];
 
-        for (let i in departamentos) {
-            let df_stacked_row = df_stacked.query({ column: 'cod_depa', is: '==', to: parseInt(i) })
-                // df_stacked_row = df_stacked_row.reset_index()
+        for (let i in x_sbar) {
+            let df_stacked_row = df_stacked.query({ column: _cod_depa_out, is: '==', to: x_sbar[i] })
             y_row = []
             for (let survey in surveys) {
                 try {
-                    let stack = df_stacked_row.query({ column: 'survey', is: '==', to: surveys[survey] })
-                    y_row.push(stack['n_encuestas_sum'].data[0])
+                    let stack = df_stacked_row.query({ column: _survey, is: '==', to: surveys[survey] })
+                    y_row.push(stack[`${_n_encuestas_out}_sum`].data[0])
                 } catch (error) {
                     y_row.push(0)
                 }
 
             }
-            y.push(y_row);
-
-            // let merge_df = dfd.merge({ left: df_surveys, right: df_stacked_row, on: ['survey'], how: "right" })
-            // merge_df.print()
+            y_sbar.push(y_row);
         }
-        y = y[0].map((_, colIndex) => y.map(row => row[colIndex]));
-        _drawChartStackBar(x, y)
+        y_sbar = y_sbar[0].map((_, colIndex) => y_sbar.map(row => row[colIndex]));
+
+
+        if (status == 'update') {
+            _drawChartPieSurveysByDepUpdate(x_pie, y_pie)
+            _drawChartBarScoreOTSUpdate(x_hbar, y_hbar);
+            _drawChartStackBarUpdate(x_sbar, y_sbar)
+        } else {
+            _drawChartPieSurveysByDep(x_pie, y_pie)
+            _drawChartBarScoreOTS(x_hbar, y_hbar);
+            _drawChartStackBar(x_sbar, y_sbar)
+        }
+        status = 'update';
     }
 
-    _getChartPieSurveysByDep = function(x, y) {
+    // Funcion que permite generar el grafico de encuestas por departamento (pie)
+    _drawChartPieSurveysByDep = function(x, y) {
         var ctx = document.getElementById('canvas_pie').getContext('2d');
-        var barChart = new Chart(ctx, {
+        _chartPieSurveys = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: x,
@@ -151,10 +177,17 @@ require([
         });
     }
 
+    // Funcion que permite actualizar el grafico de encuestas por departamento (pie)
+    _drawChartPieSurveysByDepUpdate = function(x, y) {
+        _chartPieSurveys.data.labels = x;
+        _chartPieSurveys.data.datasets[0].data = y;
+        _chartPieSurveys.update();
+    }
+
+    // Funcion que permite generar el grafico de score por OTS (horizontal ba)
     _drawChartBarScoreOTS = function(x, y) {
-        var ctx = document.getElementById('score_ots').getContext('2d');
-        // ctx.canvas.height = 200;
-        var myChart = new Chart(ctx, {
+        var ctx = document.getElementById('score_ots').getContext('2d');;
+        _chartBarScoreOTS = new Chart(ctx, {
             type: 'horizontalBar',
             data: {
                 labels: x,
@@ -170,14 +203,29 @@ require([
                 title: {
                     display: true,
                     text: 'Score de encuestas por OTS (10 primeros)'
+                },
+                scales: {
+                    xAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
                 }
             }
         })
     }
 
+    // Funcion que permite actualizar el grafico de score por OTS (horizontal bar)
+    _drawChartBarScoreOTSUpdate = function(x, y) {
+        _chartBarScoreOTS.data.labels = x;
+        _chartBarScoreOTSn.data.datasets[0].data = y;
+        _chartBarScoreOTS.update();
+    }
+
+    // Funcion que permite generar el grafico de encuestas por departamento (stackbar)
     _drawChartStackBar = function(x, y) {
         var ctx = document.getElementById("canvas_stacked").getContext('2d');
-        var myChart = new Chart(ctx, {
+        _chartStackBar = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: x,
@@ -206,7 +254,7 @@ require([
             options: {
                 title: {
                     display: true,
-                    text: 'Número por tipo de encuesta a nivel de región'
+                    text: 'Cantidad de encuestas realizadas por tipo según región'
                 },
                 tooltips: {
                     displayColors: true,
@@ -237,6 +285,14 @@ require([
 
     }
 
+    // Funcion que permite actualizar el grafico de encuestas por departamento (stackbar)
+    _drawChartStackBarUpdate = function(x, y) {
+        _chartStackBar.data.labels = x;
+        _chartStackBar.data.datasets[0].data = y;
+        _chartStackBar.update();
+    }
+
+    // Funcion que permite descargar los datos utilizados para este dashboard en formato *.csv
     _downloadData = function() {
         df.to_csv().then(
             function(result) {
@@ -250,10 +306,11 @@ require([
             })
     }
 
+    // Conecta la funcion de descarga al boton downloadDataButton
     document.getElementById('downloadDataButton').addEventListener("click", _downloadData);
 
-    _getDataByUrl();
+    _renderAllDashboard();
 
-    window.setInterval(_getDataByUrl, 1000 * 60 * 5);
+    window.setInterval(_renderAllDashboard, timeRender);
 
 });
