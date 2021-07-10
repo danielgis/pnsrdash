@@ -169,6 +169,7 @@ require([
             },
             // plugins: [ChartDataLabels],
             options: {
+                maintainAspectRatio: false,
                 title: {
                     display: true,
                     text: 'Número de encuestas por región'
@@ -188,7 +189,7 @@ require([
     _drawChartBarScoreOTS = function(x, y) {
         var ctx = document.getElementById('score_ots').getContext('2d');;
         _chartBarScoreOTS = new Chart(ctx, {
-            type: 'horizontalBar',
+            type: 'bar',
             data: {
                 labels: x,
                 datasets: [{
@@ -200,6 +201,7 @@ require([
                 }]
             },
             options: {
+                indexAxis: 'y',
                 title: {
                     display: true,
                     text: 'Score de encuestas por OTS (10 primeros)'
